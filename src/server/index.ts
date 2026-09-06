@@ -282,6 +282,64 @@ app.post('/api/projects/:id/git-pull', authMiddleware, async (req: Request, res:
   }
 });
 
+// Update project settings (e.g. devPort, deployCmd)
+app.patch('/api/projects/:id', authMiddleware, (req: Request, res: Response) => {
+  const { devPort, deployCmd, name, gitRemote } = req.body;
+  repo.updateProject(req.params.id, {
+    devPort: devPort !== undefined ? (devPort ? parseInt(devPort, 10) : undefined) : undefined,
+    deployCmd,
+    name,
+    gitRemote
+  });
+  res.json({ success: true, project: repo.getProject(req.params.id) });
+});
+
+// App Live Dev Preview Reverse Proxy
+app.all('/api/projects/:id/preview*', authMiddleware, async (req: Request, res: Response) => {
+  const project = repo.getProject(req.params.id);
+  if (!project) return res.status(404).send('Project not found');
+
+  const port = project.devPort || 4000;
+  const subPath = req.params[0] || '/';
+
+  try {
+    const targetUrl = `http://127.0.0.1:${port}${subPath}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
+
+    const headers: Record<string, string> = { ...req.headers as any };
+    delete headers['host'];
+
+    const proxyRes = await fetch(targetUrl, {
+      method: req.method,
+      headers: headers,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+    });
+
+    res.status(proxyRes.status);
+    proxyRes.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'transfer-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+
+    const bodyBuffer = await proxyRes.arrayBuffer();
+    res.send(Buffer.from(bodyBuffer));
+  } catch (err: any) {
+    res.status(502).send(`
+      <html>
+        <head><title>Preview Not Running</title></head>
+        <body style="background:#09090b;color:#f4f4f5;font-family:monospace;padding:24px;text-align:center;">
+          <h2 style="color:#ef4444;">App Dev Server is not running on port ${port}</h2>
+          <p style="color:#a1a1aa;font-size:13px;">To test and view your app in live preview, ask Forge in the chat:</p>
+          <div style="background:#18181b;padding:12px;border:1px solid #27272a;border-radius:6px;display:inline-block;margin:12px 0;">
+            <code>"Jalankan app ini di background di port ${port}"</code>
+          </div>
+          <p style="color:#71717a;font-size:11px;">Error: ${err.message}</p>
+        </body>
+      </html>
+    `);
+  }
+});
+
 // Deploy project
 app.post('/api/projects/:id/deploy', authMiddleware, async (req: Request, res: Response) => {
   const project = repo.getProject(req.params.id);

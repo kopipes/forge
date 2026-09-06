@@ -14,7 +14,9 @@ import {
   DownloadCloud,
   Terminal,
   StopCircle,
-  Settings
+  Settings,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 
@@ -45,6 +47,7 @@ export const ProjectView: React.FC<{
   const [deployOutput, setDeployOutput] = useState<string | null>(null);
   const [activeConfirmation, setActiveConfirmation] = useState<ConfirmationRequest | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
 
@@ -271,6 +274,15 @@ export const ProjectView: React.FC<{
           </button>
 
           <button
+            onClick={() => setShowPreviewModal(true)}
+            title="Live Preview App on VPS"
+            className="flex items-center space-x-1 text-[11px] bg-emerald-950/70 border border-emerald-500/40 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-900/50"
+          >
+            <Globe className="w-3 h-3" />
+            <span>Preview</span>
+          </button>
+
+          <button
             onClick={handleShowDiff}
             className="flex items-center space-x-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-200"
           >
@@ -460,6 +472,45 @@ export const ProjectView: React.FC<{
             </div>
             <div className="p-3 overflow-y-auto flex-1 font-mono text-[11px] text-zinc-300 whitespace-pre-wrap bg-background">
               {diffContent}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* App Live Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black/90 z-50 p-2 sm:p-4 flex flex-col justify-center">
+          <div className="bg-surface border border-border rounded-lg h-[90vh] flex flex-col overflow-hidden max-w-xl mx-auto w-full">
+            <div className="p-2.5 border-b border-border flex items-center justify-between bg-surface shrink-0">
+              <div className="flex items-center space-x-2">
+                <Globe className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-zinc-100">{project.name} (Live Preview)</span>
+                <span className="text-[10px] text-zinc-500 font-mono">Port {project.devPort || 4000}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <a
+                  href={`/api/projects/${project.id}/preview/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-accent hover:underline flex items-center space-x-1"
+                >
+                  <span>Open tab</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="text-xs text-zinc-400 hover:text-zinc-100 p-1"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-white">
+              <iframe
+                src={`/api/projects/${project.id}/preview/`}
+                className="w-full h-full border-0"
+                title={`${project.name} Preview`}
+              />
             </div>
           </div>
         </div>

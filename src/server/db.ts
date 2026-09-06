@@ -23,6 +23,7 @@ export function initDatabase(dbPath: string = DB_PATH): Database.Database {
       default_provider TEXT NOT NULL DEFAULT 'openai-compatible',
       default_model TEXT NOT NULL DEFAULT 'gpt-4o',
       deploy_cmd TEXT,
+      dev_port INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -82,6 +83,10 @@ export function initDatabase(dbPath: string = DB_PATH): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_tasks_session ON tasks(session_id);
     CREATE INDEX IF NOT EXISTS idx_command_logs_session ON command_logs(session_id);
   `);
+
+  try {
+    db.exec(`ALTER TABLE projects ADD COLUMN dev_port INTEGER;`);
+  } catch {}
 
   return db;
 }

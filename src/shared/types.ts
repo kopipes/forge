@@ -27,6 +27,7 @@ export interface Project {
   defaultProvider: string;
   defaultModel: string;
   deployCmd?: string;
+  devPort?: number; // Port of live dev preview server running on VPS
   createdAt: string;
   updatedAt: string;
 }

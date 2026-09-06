@@ -15,6 +15,7 @@ export class Repository {
       defaultProvider: r.default_provider,
       defaultModel: r.default_model,
       deployCmd: r.deploy_cmd,
+      devPort: r.dev_port || undefined,
       createdAt: r.created_at,
       updatedAt: r.updated_at
     }));
@@ -31,6 +32,7 @@ export class Repository {
       defaultProvider: r.default_provider,
       defaultModel: r.default_model,
       deployCmd: r.deploy_cmd,
+      devPort: r.dev_port || undefined,
       createdAt: r.created_at,
       updatedAt: r.updated_at
     };
@@ -38,9 +40,9 @@ export class Repository {
 
   createProject(p: Project): void {
     this.db.prepare(`
-      INSERT INTO projects (id, name, path, git_remote, default_provider, default_model, deploy_cmd, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(p.id, p.name, p.path, p.gitRemote || null, p.defaultProvider, p.defaultModel, p.deployCmd || null, p.createdAt, p.updatedAt);
+      INSERT INTO projects (id, name, path, git_remote, default_provider, default_model, deploy_cmd, dev_port, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(p.id, p.name, p.path, p.gitRemote || null, p.defaultProvider, p.defaultModel, p.deployCmd || null, p.devPort || null, p.createdAt, p.updatedAt);
   }
 
   updateProject(id: string, updates: Partial<Project>): void {
@@ -49,7 +51,7 @@ export class Repository {
     const now = new Date().toISOString();
     this.db.prepare(`
       UPDATE projects
-      SET name = ?, path = ?, git_remote = ?, default_provider = ?, default_model = ?, deploy_cmd = ?, updated_at = ?
+      SET name = ?, path = ?, git_remote = ?, default_provider = ?, default_model = ?, deploy_cmd = ?, dev_port = ?, updated_at = ?
       WHERE id = ?
     `).run(
       updates.name ?? project.name,
@@ -58,6 +60,7 @@ export class Repository {
       updates.defaultProvider ?? project.defaultProvider,
       updates.defaultModel ?? project.defaultModel,
       updates.deployCmd ?? project.deployCmd ?? null,
+      updates.devPort !== undefined ? updates.devPort : (project.devPort || null),
       now,
       id
     );
