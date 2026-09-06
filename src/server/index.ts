@@ -438,12 +438,17 @@ app.post('/api/sessions', authMiddleware, (req: Request, res: Response) => {
   const now = new Date().toISOString();
   const id = `ses_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
+  let targetModel = model;
+  if (!targetModel && !projectId) {
+    targetModel = repo.getSetting('default_vps_model') || 'gpt-4o';
+  }
+
   const session = {
     id,
     projectId: projectId || null,
     title: title || (projectId ? 'Coding Session' : 'VPS Ops Session'),
     provider: provider || 'openai-compatible',
-    model: model || 'gpt-4o',
+    model: targetModel || 'gpt-4o',
     status: 'idle' as const,
     createdAt: now,
     updatedAt: now
@@ -486,6 +491,10 @@ app.patch('/api/sessions/:id', authMiddleware, (req: Request, res: Response) => 
     model: targetModel,
     title: title ?? session.title
   });
+
+  if (!session.projectId) {
+    repo.setSetting('default_vps_model', targetModel);
+  }
 
   res.json({ success: true, session: repo.getSession(session.id) });
 });

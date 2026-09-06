@@ -104,6 +104,17 @@ Rules:
         baseUrl = this.repo.getSetting('OPENAI_BASE_URL') || process.env.OPENAI_BASE_URL || '';
       }
 
+      let modelDisplayName = targetModelId;
+      if (rawModels) {
+        try {
+          const modelsList: any[] = JSON.parse(rawModels);
+          const matched = modelsList.find(m => m.id === session.model || m.modelId === session.model || m.name === session.model);
+          if (matched && matched.name) {
+            modelDisplayName = matched.name;
+          }
+        } catch {}
+      }
+
       let maxIterations = 15;
       let finished = false;
 
@@ -136,6 +147,7 @@ Rules:
             sessionId: session.id,
             role: 'assistant',
             content: response.content,
+            model: modelDisplayName,
             createdAt: new Date().toISOString()
           });
 
@@ -150,6 +162,7 @@ Rules:
           sessionId: session.id,
           role: 'assistant',
           content: response.content,
+          model: modelDisplayName,
           toolCalls: response.toolCalls,
           createdAt: new Date().toISOString()
         });

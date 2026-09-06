@@ -62,6 +62,7 @@ export interface Message {
   sessionId: string;
   role: Role;
   content: string;
+  model?: string;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
   createdAt: string;

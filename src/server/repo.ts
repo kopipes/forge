@@ -144,6 +144,7 @@ export class Repository {
       sessionId: r.session_id,
       role: r.role,
       content: r.content,
+      model: r.model || undefined,
       toolCalls: r.tool_calls ? JSON.parse(r.tool_calls) : undefined,
       toolResults: r.tool_results ? JSON.parse(r.tool_results) : undefined,
       createdAt: r.created_at
@@ -152,13 +153,14 @@ export class Repository {
 
   createMessage(m: Message): void {
     this.db.prepare(`
-      INSERT INTO messages (id, session_id, role, content, tool_calls, tool_results, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (id, session_id, role, content, model, tool_calls, tool_results, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       m.id,
       m.sessionId,
       m.role,
       m.content,
+      m.model || null,
       m.toolCalls ? JSON.stringify(m.toolCalls) : null,
       m.toolResults ? JSON.stringify(m.toolResults) : null,
       m.createdAt

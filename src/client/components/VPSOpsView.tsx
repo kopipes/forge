@@ -313,6 +313,12 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <div className="space-y-1.5">
                     {m.content && (
                       <div className="bg-surface border border-border rounded-lg p-2.5 text-zinc-200 whitespace-pre-wrap">
+                        {m.model && (
+                          <div className="text-[9px] font-mono text-accent mb-1 flex items-center space-x-1 border-b border-border/50 pb-1">
+                            <Cpu className="w-3 h-3 text-accent shrink-0" />
+                            <span>{m.model}</span>
+                          </div>
+                        )}
                         {m.content}
                       </div>
                     )}

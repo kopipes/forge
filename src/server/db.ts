@@ -44,6 +44,7 @@ export function initDatabase(dbPath: string = DB_PATH): Database.Database {
       session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
       role TEXT NOT NULL,
       content TEXT NOT NULL,
+      model TEXT,
       tool_calls TEXT,
       tool_results TEXT,
       created_at TEXT NOT NULL
@@ -86,6 +87,10 @@ export function initDatabase(dbPath: string = DB_PATH): Database.Database {
 
   try {
     db.exec(`ALTER TABLE projects ADD COLUMN dev_port INTEGER;`);
+  } catch {}
+
+  try {
+    db.exec(`ALTER TABLE messages ADD COLUMN model TEXT;`);
   } catch {}
 
   return db;
