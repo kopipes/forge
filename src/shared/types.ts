@@ -7,6 +7,7 @@ export interface ModelConfig {
   modelId: string; // e.g. "deepseek-chat", "claude-3-7-sonnet-latest"
   apiKey?: string;
   baseUrl?: string;
+  pinned?: boolean;
 }
 
 export interface ProviderConfig {

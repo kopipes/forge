@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../api';
 import { Session, Message, ConfirmationRequest, ProviderConfig, ModelConfig } from '../../shared/types';
 import { SettingsModal } from './SettingsModal';
+import { ModelSelector } from './ModelSelector';
 import {
   ArrowLeft,
   Server,
@@ -249,28 +250,17 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       {/* Model Selector for VPS Ops */}
-      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0 overflow-hidden">
-        <div className="flex items-center space-x-1.5 min-w-0">
-          <span className="text-zinc-500 shrink-0">Ops Model:</span>
-          <select
-            value={selectedModelId}
-            onChange={(e) => handleModelChange(e.target.value)}
-            className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold truncate max-w-[210px] focus:outline-none"
-          >
-            {modelsList.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0">
+        <div className="flex items-center space-x-2">
+          <span className="text-zinc-500 text-[10px]">Ops Model:</span>
+          <ModelSelector
+            models={modelsList}
+            selectedModelId={selectedModelId}
+            onSelectModel={handleModelChange}
+            onOpenSettings={() => setShowSettings(true)}
+            onReloadModels={loadModels}
+          />
         </div>
-
-        <button
-          onClick={() => setShowSettings(true)}
-          className="text-[10px] text-zinc-400 hover:text-accent underline shrink-0 ml-1"
-        >
-          + Providers
-        </button>
       </div>
 
       {/* Tabs */}
