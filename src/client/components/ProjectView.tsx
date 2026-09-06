@@ -309,9 +309,9 @@ export const ProjectView: React.FC<{
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Model Selector Bar */}
-      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0">
-        <div className="flex items-center space-x-1.5">
-          <span className="text-zinc-500">Active Model:</span>
+      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0 overflow-hidden">
+        <div className="flex items-center space-x-1.5 min-w-0">
+          <span className="text-zinc-500 shrink-0">Model:</span>
           <select
             value={selectedModelId}
             onChange={(e) => {
@@ -325,11 +325,11 @@ export const ProjectView: React.FC<{
                 setSelectedModel(val);
               }
             }}
-            className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold"
+            className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold truncate max-w-[210px] focus:outline-none"
           >
             {modelsList.map(m => (
               <option key={m.id} value={m.id}>
-                {m.name} ({m.provider})
+                {m.name}
               </option>
             ))}
           </select>
@@ -337,9 +337,9 @@ export const ProjectView: React.FC<{
 
         <button
           onClick={() => setShowSettings(true)}
-          className="text-[10px] text-zinc-400 hover:text-accent underline"
+          className="text-[10px] text-zinc-400 hover:text-accent underline shrink-0 ml-1"
         >
-          + Manage Models
+          + Providers
         </button>
       </div>
 
