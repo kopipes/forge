@@ -459,6 +459,37 @@ app.get('/api/sessions/:id', authMiddleware, (req: Request, res: Response) => {
   res.json(session);
 });
 
+// Update Session Model / Provider settings permanently
+app.patch('/api/sessions/:id', authMiddleware, (req: Request, res: Response) => {
+  const session = repo.getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+
+  const { provider, model, title } = req.body;
+  let targetProvider = provider || session.provider;
+  let targetModel = model || session.model;
+
+  // Match preset in configured models if provided
+  const rawModels = repo.getSetting('configured_models');
+  if (rawModels && model) {
+    try {
+      const modelsList: any[] = JSON.parse(rawModels);
+      const matched = modelsList.find(m => m.id === model || m.modelId === model);
+      if (matched) {
+        targetProvider = matched.provider || targetProvider;
+        targetModel = matched.id || matched.modelId || targetModel;
+      }
+    } catch {}
+  }
+
+  repo.updateSession(session.id, {
+    provider: targetProvider,
+    model: targetModel,
+    title: title ?? session.title
+  });
+
+  res.json({ success: true, session: repo.getSession(session.id) });
+});
+
 // Messages in session
 app.get('/api/sessions/:id/messages', authMiddleware, (req: Request, res: Response) => {
   res.json(repo.getMessages(req.params.id));

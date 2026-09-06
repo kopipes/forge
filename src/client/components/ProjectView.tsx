@@ -64,6 +64,9 @@ export const ProjectView: React.FC<{
       setSessions(ses);
       if (ses.length > 0 && !currentSession) {
         setCurrentSession(ses[0]);
+        setSelectedModelId(ses[0].model);
+        setSelectedProvider(ses[0].provider);
+        setSelectedModel(ses[0].model);
       } else if (ses.length === 0) {
         // Create initial session
         const newSes = await apiRequest<Session>('/api/sessions', {
@@ -71,15 +74,52 @@ export const ProjectView: React.FC<{
           body: JSON.stringify({
             projectId: project.id,
             title: 'Coding Session',
-            provider: selectedProvider,
-            model: selectedModel
+            provider: project.defaultProvider || selectedProvider,
+            model: project.defaultModel || selectedModel
           })
         });
         setSessions([newSes]);
         setCurrentSession(newSes);
+        setSelectedModelId(newSes.model);
+        setSelectedProvider(newSes.provider);
+        setSelectedModel(newSes.model);
       }
     } catch (e) {
       console.error('Error loading sessions:', e);
+    }
+  };
+
+  const handleModelChange = async (val: string) => {
+    setSelectedModelId(val);
+    const found = modelsList.find(m => m.id === val || m.modelId === val);
+    const targetProvider = found ? found.provider : selectedProvider;
+    const targetModel = found ? found.modelId : val;
+
+    setSelectedProvider(targetProvider);
+    setSelectedModel(targetModel);
+
+    // Save permanently in database session and project default
+    if (currentSession) {
+      try {
+        await Promise.all([
+          apiRequest(`/api/sessions/${currentSession.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              provider: targetProvider,
+              model: val
+            })
+          }),
+          apiRequest(`/api/projects/${project.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              defaultProvider: targetProvider,
+              defaultModel: val
+            })
+          })
+        ]);
+      } catch (err) {
+        console.error('Failed to persist project session model:', err);
+      }
     }
   };
 
@@ -337,17 +377,7 @@ export const ProjectView: React.FC<{
           <span className="text-zinc-500 shrink-0">Model:</span>
           <select
             value={selectedModelId}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedModelId(val);
-              const found = modelsList.find(m => m.id === val || m.modelId === val);
-              if (found) {
-                setSelectedProvider(found.provider);
-                setSelectedModel(found.modelId);
-              } else {
-                setSelectedModel(val);
-              }
-            }}
+            onChange={(e) => handleModelChange(e.target.value)}
             className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold truncate max-w-[210px] focus:outline-none"
           >
             {modelsList.map(m => (

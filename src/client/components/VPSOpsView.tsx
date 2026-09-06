@@ -35,11 +35,6 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     try {
       const list = await apiRequest<ModelConfig[]>('/api/models');
       setModelsList(list);
-      if (list.length > 0 && !list.some(m => m.id === selectedModelId)) {
-        setSelectedModelId(list[0].id);
-        setSelectedProvider(list[0].provider);
-        setSelectedModel(list[0].modelId);
-      }
     } catch (e) {
       console.error('Error loading models list:', e);
     }
@@ -63,9 +58,11 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     try {
       const sessions = await apiRequest<Session[]>('/api/sessions?projectId=null');
       if (sessions.length > 0) {
-        setSession(sessions[0]);
-        setSelectedProvider(sessions[0].provider);
-        setSelectedModel(sessions[0].model);
+        const ses = sessions[0];
+        setSession(ses);
+        setSelectedModelId(ses.model);
+        setSelectedProvider(ses.provider);
+        setSelectedModel(ses.model);
       } else {
         const newSes = await apiRequest<Session>('/api/sessions', {
           method: 'POST',
@@ -77,11 +74,37 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           })
         });
         setSession(newSes);
+        setSelectedModelId(newSes.model);
         setSelectedProvider(newSes.provider);
         setSelectedModel(newSes.model);
       }
     } catch (e) {
       console.error('Error init VPS session:', e);
+    }
+  };
+
+  const handleModelChange = async (val: string) => {
+    setSelectedModelId(val);
+    const found = modelsList.find(m => m.id === val || m.modelId === val);
+    const targetProvider = found ? found.provider : selectedProvider;
+    const targetModel = found ? found.modelId : val;
+
+    setSelectedProvider(targetProvider);
+    setSelectedModel(targetModel);
+
+    // Save permanently in database session
+    if (session) {
+      try {
+        await apiRequest(`/api/sessions/${session.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            provider: targetProvider,
+            model: val
+          })
+        });
+      } catch (err) {
+        console.error('Failed to persist session model:', err);
+      }
     }
   };
 
@@ -231,17 +254,7 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <span className="text-zinc-500 shrink-0">Ops Model:</span>
           <select
             value={selectedModelId}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedModelId(val);
-              const found = modelsList.find(m => m.id === val || m.modelId === val);
-              if (found) {
-                setSelectedProvider(found.provider);
-                setSelectedModel(found.modelId);
-              } else {
-                setSelectedModel(val);
-              }
-            }}
+            onChange={(e) => handleModelChange(e.target.value)}
             className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold truncate max-w-[210px] focus:outline-none"
           >
             {modelsList.map(m => (
