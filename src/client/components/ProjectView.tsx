@@ -66,8 +66,9 @@ export const ProjectView: React.FC<{
       if (ses.length > 0 && !currentSession) {
         setCurrentSession(ses[0]);
         setSelectedModelId(ses[0].model);
-        setSelectedProvider(ses[0].provider);
-        setSelectedModel(ses[0].model);
+        const found = modelsList.find(m => m.id === ses[0].model || m.modelId === ses[0].model);
+        setSelectedProvider(found ? found.provider : ses[0].provider);
+        setSelectedModel(found ? found.modelId : ses[0].model);
       } else if (ses.length === 0) {
         // Create initial session
         const newSes = await apiRequest<Session>('/api/sessions', {
@@ -82,8 +83,9 @@ export const ProjectView: React.FC<{
         setSessions([newSes]);
         setCurrentSession(newSes);
         setSelectedModelId(newSes.model);
-        setSelectedProvider(newSes.provider);
-        setSelectedModel(newSes.model);
+        const found = modelsList.find(m => m.id === newSes.model || m.modelId === newSes.model);
+        setSelectedProvider(found ? found.provider : newSes.provider);
+        setSelectedModel(found ? found.modelId : newSes.model);
       }
     } catch (e) {
       console.error('Error loading sessions:', e);
@@ -152,10 +154,13 @@ export const ProjectView: React.FC<{
   };
 
   useEffect(() => {
-    loadProviders();
-    loadModels();
-    loadGitInfo();
-    loadSessions();
+    const init = async () => {
+      await loadProviders();
+      await loadModels();
+      await loadGitInfo();
+      await loadSessions();
+    };
+    init();
   }, [project.id]);
 
   useEffect(() => {

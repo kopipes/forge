@@ -443,12 +443,26 @@ app.post('/api/sessions', authMiddleware, (req: Request, res: Response) => {
     targetModel = repo.getSetting('default_vps_model') || 'gpt-4o';
   }
 
+  // Match provider from configured_models if model preset is specified
+  let targetProvider = provider || 'openai-compatible';
+  const rawModels = repo.getSetting('configured_models');
+  if (rawModels && targetModel) {
+    try {
+      const modelsList: any[] = JSON.parse(rawModels);
+      const matched = modelsList.find(m => m.id === targetModel || m.modelId === targetModel);
+      if (matched) {
+        targetProvider = matched.provider || targetProvider;
+        targetModel = matched.id || matched.modelId || targetModel;
+      }
+    } catch {}
+  }
+
   const session = {
     id,
     projectId: projectId || null,
     title: title || (projectId ? 'Coding Session' : 'VPS Ops Session'),
-    provider: provider || 'openai-compatible',
-    model: targetModel || 'gpt-4o',
+    provider: targetProvider,
+    model: targetModel,
     status: 'idle' as const,
     createdAt: now,
     updatedAt: now
@@ -532,6 +546,11 @@ app.post('/api/sessions/:id/prompt', authMiddleware, async (req: Request, res: R
     provider: targetProvider,
     model: targetModel
   });
+
+  // Save as default VPS model if this is a VPS Ops session (projectId is null)
+  if (!session.projectId) {
+    repo.setSetting('default_vps_model', targetModel);
+  }
 
   // 1. Add user message
   const userMsgId = `msg_${Date.now()}`;

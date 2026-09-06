@@ -62,8 +62,9 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const ses = sessions[0];
         setSession(ses);
         setSelectedModelId(ses.model);
-        setSelectedProvider(ses.provider);
-        setSelectedModel(ses.model);
+        const found = modelsList.find(m => m.id === ses.model || m.modelId === ses.model);
+        setSelectedProvider(found ? found.provider : ses.provider);
+        setSelectedModel(found ? found.modelId : ses.model);
       } else {
         const newSes = await apiRequest<Session>('/api/sessions', {
           method: 'POST',
@@ -76,8 +77,9 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         });
         setSession(newSes);
         setSelectedModelId(newSes.model);
-        setSelectedProvider(newSes.provider);
-        setSelectedModel(newSes.model);
+        const found = modelsList.find(m => m.id === newSes.model || m.modelId === newSes.model);
+        setSelectedProvider(found ? found.provider : newSes.provider);
+        setSelectedModel(found ? found.modelId : newSes.model);
       }
     } catch (e) {
       console.error('Error init VPS session:', e);
@@ -128,10 +130,13 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   useEffect(() => {
-    loadProviders();
-    loadModels();
-    initVPSSession();
-    loadHealth();
+    const init = async () => {
+      await loadProviders();
+      await loadModels();
+      await initVPSSession();
+      await loadHealth();
+    };
+    init();
   }, []);
 
   useEffect(() => {
