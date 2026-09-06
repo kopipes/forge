@@ -83,12 +83,13 @@ export class GeminiAdapter implements ProviderAdapter {
       body: JSON.stringify(payload)
     });
 
+    const resText = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API error (${response.status}): ${errText}`);
+      throw new Error(`Gemini API error (${response.status}): ${resText}`);
     }
 
-    const data: any = await response.json();
+    const data: any = JSON.parse(resText);
     const candidate = data.candidates?.[0];
     if (!candidate || !candidate.content) {
       throw new Error('No candidates returned from Gemini API.');

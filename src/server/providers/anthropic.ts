@@ -71,12 +71,13 @@ export class AnthropicAdapter implements ProviderAdapter {
       body: JSON.stringify(payload)
     });
 
+    const resText = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errText}`);
+      throw new Error(`Anthropic API error (${response.status}): ${resText}`);
     }
 
-    const data: any = await response.json();
+    const data: any = JSON.parse(resText);
     let textContent = '';
     const toolCalls: ToolCall[] = [];
 

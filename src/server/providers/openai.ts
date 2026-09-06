@@ -28,7 +28,7 @@ export class OpenAIAdapter implements ProviderAdapter {
             type: 'function',
             function: {
               name: tc.name,
-              arguments: JSON.stringify(tc.arguments)
+              arguments: typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments)
             }
           }));
         }
@@ -57,6 +57,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     const payload: any = {
       model,
       messages: formattedMessages,
+      stream: false,
       ...(formattedTools.length > 0 ? { tools: formattedTools } : {})
     };
 
@@ -69,12 +70,29 @@ export class OpenAIAdapter implements ProviderAdapter {
       body: JSON.stringify(payload)
     });
 
+    const resText = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${errText}`);
+      throw new Error(`API provider error (${response.status}): ${resText}`);
     }
 
-    const data: any = await response.json();
+    let data: any;
+    try {
+      data = JSON.parse(resText);
+    } catch (err) {
+      // Robust JSON parsing fallback for providers returning SSE data: lines
+      const cleanLine = resText
+        .split('\n')
+        .map(l => l.trim().replace(/^data:\s*/, ''))
+        .find(l => l.startsWith('{') && l.endsWith('}'));
+
+      if (cleanLine) {
+        data = JSON.parse(cleanLine);
+      } else {
+        throw new Error(`Failed to parse LLM response JSON: ${resText.substring(0, 200)}`);
+      }
+    }
+
     const choice = data.choices?.[0];
     if (!choice) {
       throw new Error('No choices returned from LLM provider.');
@@ -92,7 +110,7 @@ export class OpenAIAdapter implements ProviderAdapter {
           args = { raw: tc.function.arguments };
         }
         toolCalls.push({
-          id: tc.id,
+          id: tc.id || `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           name: tc.function.name,
           arguments: args
         });

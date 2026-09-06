@@ -288,6 +288,16 @@ Rules:
       } as AgentEvent);
 
     } catch (err: any) {
+      // Save explicit error message to DB so it renders in the chat UI
+      const errorMsgId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      this.repo.createMessage({
+        id: errorMsgId,
+        sessionId: session.id,
+        role: 'assistant',
+        content: `⚠️ Execution Error: ${err.message}`,
+        createdAt: new Date().toISOString()
+      });
+
       this.repo.updateTask(taskId, { status: 'failed', error: err.message });
       this.repo.updateSession(session.id, { status: 'error' });
 
