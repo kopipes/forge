@@ -13,8 +13,10 @@ import {
   UploadCloud,
   DownloadCloud,
   Terminal,
-  StopCircle
+  StopCircle,
+  Settings
 } from 'lucide-react';
+import { SettingsModal } from './SettingsModal';
 
 export const ProjectView: React.FC<{
   project: Project;
@@ -31,6 +33,7 @@ export const ProjectView: React.FC<{
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [deployOutput, setDeployOutput] = useState<string | null>(null);
   const [activeConfirmation, setActiveConfirmation] = useState<ConfirmationRequest | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
 
@@ -274,6 +277,14 @@ export const ProjectView: React.FC<{
           )}
 
           <button
+            onClick={() => setShowSettings(true)}
+            title="LLM Settings"
+            className="p-1 text-zinc-400 hover:text-zinc-100 bg-zinc-800 rounded"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={handleNewSession}
             title="New Chat Session"
             className="p-1 text-zinc-400 hover:text-zinc-100 bg-zinc-800 rounded"
@@ -282,6 +293,8 @@ export const ProjectView: React.FC<{
           </button>
         </div>
       </div>
+
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Model Selector Bar */}
       <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center space-x-2 text-[11px] shrink-0">

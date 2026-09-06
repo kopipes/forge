@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../api';
 import { Project, ProviderConfig } from '../../shared/types';
-import { Terminal, Activity, FolderGit2, Plus, Server, ChevronRight, RefreshCw, Cpu, HardDrive } from 'lucide-react';
+import { SettingsModal } from './SettingsModal';
+import { Terminal, Activity, FolderGit2, Plus, Server, ChevronRight, RefreshCw, Cpu, HardDrive, Settings, LogOut } from 'lucide-react';
 
 export const DashboardView: React.FC<{
   onSelectProject: (p: Project) => void;
   onOpenVPSOps: () => void;
-}> = ({ onSelectProject, onOpenVPSOps }) => {
+  onLogout: () => void;
+}> = ({ onSelectProject, onOpenVPSOps, onLogout }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [cloneFromRemote, setCloneFromRemote] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
@@ -76,13 +79,32 @@ export const DashboardView: React.FC<{
           <Terminal className="w-5 h-5 text-accent" />
           <span className="font-bold tracking-tight text-sm text-zinc-100">FORGE COMPANION</span>
         </div>
-        <button
-          onClick={loadData}
-          className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-surface border border-border rounded"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => setShowSettings(true)}
+            title="LLM API Settings"
+            className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-surface border border-border rounded"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={loadData}
+            title="Refresh"
+            className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-surface border border-border rounded"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onLogout}
+            title="Logout"
+            className="p-1.5 text-zinc-400 hover:text-red-400 bg-surface border border-border rounded"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* VPS Health Card (Quick Overview) */}
       <div

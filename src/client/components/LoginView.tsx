@@ -4,7 +4,7 @@ import { Terminal, Mail, KeyRound, ArrowRight, RotateCcw } from 'lucide-react';
 
 export const LoginView: React.FC<{ onLoginSuccess: () => void }> = ({ onLoginSuccess }) => {
   const [step, setStep] = useState<'email' | 'code'>('email');
-  const [email, setEmail] = useState('bob@provaliantgroup.com');
+  const [email, setEmail] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -150,7 +150,9 @@ export const LoginView: React.FC<{ onLoginSuccess: () => void }> = ({ onLoginSuc
                 />
                 <KeyRound className="w-4 h-4 text-zinc-600 absolute right-3 top-3.5" />
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1">Check Ping DM to <strong>{email}</strong>.</p>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Check Ping DM sent to <strong>{email.replace(/(.{2})(.*)(?=@)/, (_m, p1, p2) => p1 + '*'.repeat(p2.length))}</strong>.
+              </p>
             </div>
 
             <button

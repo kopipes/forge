@@ -66,6 +66,19 @@ Rules:
       const tools = this.toolRegistry.getToolsForContext(isProjectContext);
       const adapter = this.providerRegistry.getAdapter(session.provider);
 
+      // Resolve API keys & base URLs from Settings DB with process.env fallback
+      let apiKey = '';
+      let baseUrl = '';
+
+      if (session.provider === 'openai-compatible') {
+        apiKey = this.repo.getSetting('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || '';
+        baseUrl = this.repo.getSetting('OPENAI_BASE_URL') || process.env.OPENAI_BASE_URL || '';
+      } else if (session.provider === 'anthropic') {
+        apiKey = this.repo.getSetting('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || '';
+      } else if (session.provider === 'gemini') {
+        apiKey = this.repo.getSetting('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
+      }
+
       let maxIterations = 15;
       let finished = false;
 
@@ -76,7 +89,8 @@ Rules:
           llmMessages,
           tools,
           session.model,
-          systemPrompt
+          systemPrompt,
+          { apiKey: apiKey || undefined, baseUrl: baseUrl || undefined }
         );
 
         if (response.content) {

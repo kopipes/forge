@@ -110,6 +110,43 @@ app.get('/api/auth/check', (req: Request, res: Response) => {
   return res.json({ authenticated, email });
 });
 
+// Settings API (Manage API keys & LLM endpoints)
+app.get('/api/settings', authMiddleware, (req: Request, res: Response) => {
+  const openaiApiKey = repo.getSetting('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || '';
+  const anthropicApiKey = repo.getSetting('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || '';
+  const geminiApiKey = repo.getSetting('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
+  const openaiBaseUrl = repo.getSetting('OPENAI_BASE_URL') || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+
+  res.json({
+    hasOpenAI: !!openaiApiKey,
+    openaiApiKey: openaiApiKey ? `${openaiApiKey.substring(0, 7)}...${openaiApiKey.slice(-4)}` : '',
+    hasAnthropic: !!anthropicApiKey,
+    anthropicApiKey: anthropicApiKey ? `${anthropicApiKey.substring(0, 7)}...${anthropicApiKey.slice(-4)}` : '',
+    hasGemini: !!geminiApiKey,
+    geminiApiKey: geminiApiKey ? `${geminiApiKey.substring(0, 6)}...${geminiApiKey.slice(-3)}` : '',
+    openaiBaseUrl
+  });
+});
+
+app.post('/api/settings', authMiddleware, (req: Request, res: Response) => {
+  const { openaiApiKey, anthropicApiKey, geminiApiKey, openaiBaseUrl } = req.body;
+
+  if (openaiApiKey !== undefined && !openaiApiKey.includes('...')) {
+    repo.setSetting('OPENAI_API_KEY', openaiApiKey.trim());
+  }
+  if (anthropicApiKey !== undefined && !anthropicApiKey.includes('...')) {
+    repo.setSetting('ANTHROPIC_API_KEY', anthropicApiKey.trim());
+  }
+  if (geminiApiKey !== undefined && !geminiApiKey.includes('...')) {
+    repo.setSetting('GEMINI_API_KEY', geminiApiKey.trim());
+  }
+  if (openaiBaseUrl !== undefined) {
+    repo.setSetting('OPENAI_BASE_URL', openaiBaseUrl.trim() || 'https://api.openai.com/v1');
+  }
+
+  res.json({ success: true });
+});
+
 // Providers & Models
 app.get('/api/providers', authMiddleware, (req: Request, res: Response) => {
   res.json(providerRegistry.getAvailableProviders());

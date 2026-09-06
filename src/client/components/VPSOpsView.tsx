@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../api';
-import { Session, Message, ConfirmationRequest } from '../../shared/types';
+import { Session, Message, ConfirmationRequest, ProviderConfig } from '../../shared/types';
+import { SettingsModal } from './SettingsModal';
 import {
   ArrowLeft,
   Server,
@@ -13,30 +14,42 @@ import {
   FileText,
   Send,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Settings
 } from 'lucide-react';
 
 export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'health' | 'services' | 'cron' | 'logs'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'health' | 'services' | 'cron'>('chat');
   const [session, setSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState('');
   const [healthData, setHealthData] = useState<any>(null);
-  const [servicesOutput, setServicesOutput] = useState('');
-  const [cronOutput, setCronOutput] = useState('');
-  const [logsOutput, setLogsOutput] = useState('');
-  const [logService, setLogService] = useState('nginx');
+  const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState('openai-compatible');
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [showSettings, setShowSettings] = useState(false);
   const [activeConfirmation, setActiveConfirmation] = useState<ConfirmationRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  const loadProviders = async () => {
+    try {
+      const provs = await apiRequest<ProviderConfig[]>('/api/providers');
+      setProviders(provs);
+    } catch (e) {
+      console.error('Error loading providers:', e);
+    }
+  };
+
   const initVPSSession = async () => {
     try {
       const sessions = await apiRequest<Session[]>('/api/sessions?projectId=null');
       if (sessions.length > 0) {
         setSession(sessions[0]);
+        setSelectedProvider(sessions[0].provider);
+        setSelectedModel(sessions[0].model);
       } else {
         const newSes = await apiRequest<Session>('/api/sessions', {
           method: 'POST',
@@ -48,6 +61,8 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           })
         });
         setSession(newSes);
+        setSelectedProvider(newSes.provider);
+        setSelectedModel(newSes.model);
       }
     } catch (e) {
       console.error('Error init VPS session:', e);
@@ -73,6 +88,7 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   useEffect(() => {
+    loadProviders();
     initVPSSession();
     loadHealth();
   }, []);
@@ -124,7 +140,11 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     try {
       await apiRequest(`/api/sessions/${session.id}/prompt`, {
         method: 'POST',
-        body: JSON.stringify({ prompt: userText })
+        body: JSON.stringify({
+          prompt: userText,
+          provider: selectedProvider,
+          model: selectedModel
+        })
       });
       loadMessages(session.id);
     } catch (err: any) {
@@ -151,6 +171,8 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setPrompt(promptText);
   };
 
+  const selectedProviderConfig = providers.find(p => p.id === selectedProvider);
+
   return (
     <div className="flex flex-col h-screen bg-background text-zinc-100 max-w-lg mx-auto border-x border-border">
       {/* Top Header Bar */}
@@ -165,13 +187,50 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </div>
         </div>
 
-        <button
-          onClick={loadHealth}
-          className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-zinc-800 rounded text-[10px] flex items-center space-x-1"
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => setShowSettings(true)}
+            title="LLM API Settings"
+            className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-zinc-800 rounded"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={loadHealth}
+            className="p-1.5 text-zinc-400 hover:text-zinc-100 bg-zinc-800 rounded text-[10px] flex items-center space-x-1"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Model Selector for VPS Ops */}
+      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center space-x-2 text-[11px] shrink-0">
+        <span className="text-zinc-500">Model:</span>
+        <select
+          value={selectedProvider}
+          onChange={(e) => {
+            const pId = e.target.value;
+            setSelectedProvider(pId);
+            const found = providers.find(p => p.id === pId);
+            if (found) setSelectedModel(found.defaultModel);
+          }}
+          className="bg-surface border border-border rounded px-1.5 py-0.5 text-zinc-300 text-[10px]"
         >
-          <RotateCcw className="w-3 h-3" />
-          <span>Refresh</span>
-        </button>
+          {providers.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          className="bg-surface border border-border rounded px-1.5 py-0.5 text-accent text-[10px] truncate max-w-[140px]"
+        >
+          {(selectedProviderConfig?.availableModels || [selectedModel]).map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
       </div>
 
       {/* Tabs */}
@@ -345,6 +404,8 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </button>
         </form>
       )}
+
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 };

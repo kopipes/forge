@@ -24,6 +24,16 @@ export const App: React.FC = () => {
     checkAuth();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await apiRequest('/api/auth/logout', { method: 'POST' });
+    } finally {
+      setAuthenticated(false);
+      setActiveView('dashboard');
+      setSelectedProject(null);
+    }
+  };
+
   if (authenticated === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-xs text-zinc-500 font-mono">
@@ -45,6 +55,7 @@ export const App: React.FC = () => {
             setActiveView('project');
           }}
           onOpenVPSOps={() => setActiveView('vps')}
+          onLogout={handleLogout}
         />
       )}
 
