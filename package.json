@@ -2,7 +2,7 @@
   "name": "forge",
   "version": "1.0.0",
   "description": "Forge — Mobile Coding & VPS Ops Companion",
-  "main": "dist/server/index.js",
+  "main": "dist/server/server/index.js",
   "type": "module",
   "scripts": {
     "dev:server": "tsx watch src/server/index.ts",
@@ -11,7 +11,7 @@
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build",
     "build": "npm run build:client && npm run build:server",
-    "start": "node dist/server/index.js",
+    "start": "node dist/server/server/index.js",
     "test": "vitest run"
   },
   "keywords": ["forge", "vps-ops", "mobile-coding", "agent"],
