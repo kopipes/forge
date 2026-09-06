@@ -192,7 +192,7 @@ export const DashboardView: React.FC<{
             <label className="block text-[10px] text-zinc-400 mb-1">PROJECT DIRECTORY PATH ON VPS</label>
             <input
               type="text"
-              placeholder="e.g. /srv/apps/my-app or ./my-app"
+              placeholder="e.g. /srv/apps/my-app or my-app"
               value={newProject.projectPath}
               onChange={e => setNewProject({ ...newProject, projectPath: e.target.value })}
               className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-zinc-100"

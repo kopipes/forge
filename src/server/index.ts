@@ -265,7 +265,31 @@ app.post('/api/projects', authMiddleware, async (req: Request, res: Response) =>
     return res.status(400).json({ error: 'Name and projectPath are required' });
   }
 
-  const resolvedPath = path.resolve(projectPath);
+  let resolvedPath = path.resolve(projectPath);
+
+  // Smart VPS path resolution:
+  // If input is relative or a single segment under root (like 'links' or '/links'), resolve under /srv/apps if available
+  const rawClean = projectPath.trim();
+  const segment = rawClean.replace(/^\/+/, '');
+  if (segment && !segment.includes('/')) {
+    const defaultAppsDir = '/srv/apps';
+    if (fs.existsSync(defaultAppsDir)) {
+      resolvedPath = path.join(defaultAppsDir, segment);
+    }
+  }
+
+  // Ensure parent directory exists & check write permissions
+  const parentDir = path.dirname(resolvedPath);
+  try {
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+    fs.accessSync(parentDir, fs.constants.W_OK);
+  } catch (err: any) {
+    return res.status(400).json({
+      error: `Cannot write to directory ${parentDir}: Permission denied. On this VPS, please use /srv/apps/ (e.g. /srv/apps/${path.basename(resolvedPath)}).`
+    });
+  }
 
   // If user requested to clone from remote repository
   if (cloneFromRemote && gitRemote) {
@@ -273,10 +297,6 @@ app.post('/api/projects', authMiddleware, async (req: Request, res: Response) =>
       return res.status(400).json({ error: `Directory ${resolvedPath} already exists and is not empty.` });
     }
     try {
-      const parentDir = path.dirname(resolvedPath);
-      if (!fs.existsSync(parentDir)) {
-        fs.mkdirSync(parentDir, { recursive: true });
-      }
       await execAsync(`git clone "${gitRemote}" "${resolvedPath}"`);
     } catch (err: any) {
       return res.status(500).json({ error: `Git clone failed: ${err.message}` });
