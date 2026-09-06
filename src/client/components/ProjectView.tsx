@@ -38,6 +38,11 @@ export const ProjectView: React.FC<{
     try {
       const list = await apiRequest<ModelConfig[]>('/api/models');
       setModelsList(list);
+      if (list.length > 0 && !list.some(m => m.id === selectedModelId)) {
+        setSelectedModelId(list[0].id);
+        setSelectedProvider(list[0].provider);
+        setSelectedModel(list[0].modelId);
+      }
     } catch (e) {
       console.error('Error loading models list:', e);
     }
@@ -168,7 +173,7 @@ export const ProjectView: React.FC<{
         body: JSON.stringify({
           prompt: userText,
           provider: selectedProvider,
-          model: selectedModel
+          model: selectedModelId
         })
       });
       loadMessages(currentSession.id);
@@ -318,7 +323,13 @@ export const ProjectView: React.FC<{
         </div>
       </div>
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => {
+          setShowSettings(false);
+          loadModels();
+        }}
+      />
 
       {/* Model Selector Bar */}
       <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0 overflow-hidden">

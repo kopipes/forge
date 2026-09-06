@@ -35,6 +35,11 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     try {
       const list = await apiRequest<ModelConfig[]>('/api/models');
       setModelsList(list);
+      if (list.length > 0 && !list.some(m => m.id === selectedModelId)) {
+        setSelectedModelId(list[0].id);
+        setSelectedProvider(list[0].provider);
+        setSelectedModel(list[0].modelId);
+      }
     } catch (e) {
       console.error('Error loading models list:', e);
     }
@@ -141,21 +146,17 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText, activeConfirmation]);
 
-  const handleSendPrompt = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || !session) return;
-
-    const userText = prompt;
-    setPrompt('');
+  const executePrompt = async (text: string) => {
+    if (!text.trim() || !session) return;
     setIsStreaming(true);
 
     try {
       await apiRequest(`/api/sessions/${session.id}/prompt`, {
         method: 'POST',
         body: JSON.stringify({
-          prompt: userText,
+          prompt: text,
           provider: selectedProvider,
-          model: selectedModel
+          model: selectedModelId
         })
       });
       loadMessages(session.id);
@@ -163,6 +164,14 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       alert(`Error sending prompt: ${err.message}`);
       setIsStreaming(false);
     }
+  };
+
+  const handleSendPrompt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    const userText = prompt;
+    setPrompt('');
+    await executePrompt(userText);
   };
 
   const handleConfirmation = async (approved: boolean) => {
@@ -180,7 +189,7 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleQuickTool = async (promptText: string) => {
     setActiveTab('chat');
-    setPrompt(promptText);
+    await executePrompt(promptText);
   };
 
   const selectedProviderConfig = providers.find(p => p.id === selectedProvider);
@@ -423,7 +432,13 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </form>
       )}
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => {
+          setShowSettings(false);
+          loadModels();
+        }}
+      />
     </div>
   );
 };

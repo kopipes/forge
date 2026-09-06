@@ -399,12 +399,26 @@ app.post('/api/sessions/:id/prompt', authMiddleware, async (req: Request, res: R
   const { prompt, provider, model } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
-  if (provider || model) {
-    repo.updateSession(session.id, {
-      provider: provider || session.provider,
-      model: model || session.model
-    });
+  let targetProvider = provider || session.provider;
+  let targetModel = model || session.model;
+
+  // Check if model matches a configured model preset ID
+  const rawModels = repo.getSetting('configured_models');
+  if (rawModels) {
+    try {
+      const modelsList: any[] = JSON.parse(rawModels);
+      const matched = modelsList.find(m => m.id === model || m.modelId === model);
+      if (matched) {
+        targetProvider = matched.provider || targetProvider;
+        targetModel = matched.modelId || targetModel;
+      }
+    } catch {}
   }
+
+  repo.updateSession(session.id, {
+    provider: targetProvider,
+    model: targetModel
+  });
 
   // 1. Add user message
   const userMsgId = `msg_${Date.now()}`;
