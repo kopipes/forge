@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../api';
-import { Project, Session, Message, ProviderConfig, ConfirmationRequest } from '../../shared/types';
+import { Project, Session, Message, ProviderConfig, ConfirmationRequest, ModelConfig } from '../../shared/types';
 import {
   ArrowLeft,
   Send,
@@ -27,8 +27,19 @@ export const ProjectView: React.FC<{
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState('');
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const [modelsList, setModelsList] = useState<ModelConfig[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState('gpt-4o');
   const [selectedProvider, setSelectedProvider] = useState(project.defaultProvider);
   const [selectedModel, setSelectedModel] = useState(project.defaultModel);
+
+  const loadModels = async () => {
+    try {
+      const list = await apiRequest<ModelConfig[]>('/api/models');
+      setModelsList(list);
+    } catch (e) {
+      console.error('Error loading models list:', e);
+    }
+  };
   const [gitStatus, setGitStatus] = useState<{ branch: string; status: string }>({ branch: '', status: '' });
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [deployOutput, setDeployOutput] = useState<string | null>(null);
@@ -93,6 +104,7 @@ export const ProjectView: React.FC<{
 
   useEffect(() => {
     loadProviders();
+    loadModels();
     loadGitInfo();
     loadSessions();
   }, [project.id]);
@@ -297,32 +309,38 @@ export const ProjectView: React.FC<{
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Model Selector Bar */}
-      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center space-x-2 text-[11px] shrink-0">
-        <span className="text-zinc-500">Model:</span>
-        <select
-          value={selectedProvider}
-          onChange={(e) => {
-            const pId = e.target.value;
-            setSelectedProvider(pId);
-            const found = providers.find(p => p.id === pId);
-            if (found) setSelectedModel(found.defaultModel);
-          }}
-          className="bg-surface border border-border rounded px-1.5 py-0.5 text-zinc-300 text-[10px]"
-        >
-          {providers.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0">
+        <div className="flex items-center space-x-1.5">
+          <span className="text-zinc-500">Active Model:</span>
+          <select
+            value={selectedModelId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedModelId(val);
+              const found = modelsList.find(m => m.id === val || m.modelId === val);
+              if (found) {
+                setSelectedProvider(found.provider);
+                setSelectedModel(found.modelId);
+              } else {
+                setSelectedModel(val);
+              }
+            }}
+            className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold"
+          >
+            {modelsList.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.provider})
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-surface border border-border rounded px-1.5 py-0.5 text-accent text-[10px] truncate max-w-[140px]"
+        <button
+          onClick={() => setShowSettings(true)}
+          className="text-[10px] text-zinc-400 hover:text-accent underline"
         >
-          {(selectedProviderConfig?.availableModels || [selectedModel]).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          + Manage Models
+        </button>
       </div>
 
       {/* Message Chat List */}

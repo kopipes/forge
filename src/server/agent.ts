@@ -64,19 +64,42 @@ Rules:
 - VPS tools are strictly allowlisted. Destructive changes will ask for user confirmation.`;
 
       const tools = this.toolRegistry.getToolsForContext(isProjectContext);
-      const adapter = this.providerRegistry.getAdapter(session.provider);
 
-      // Resolve API keys & base URLs from Settings DB with process.env fallback
+      // Check if session.model matches a custom configured model preset
+      let targetProvider = session.provider;
+      let targetModelId = session.model;
       let apiKey = '';
       let baseUrl = '';
 
-      if (session.provider === 'openai-compatible') {
-        apiKey = this.repo.getSetting('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || '';
+      const rawModels = this.repo.getSetting('configured_models');
+      if (rawModels) {
+        try {
+          const modelsList: any[] = JSON.parse(rawModels);
+          const matched = modelsList.find(m => m.id === session.model || m.modelId === session.model || m.name === session.model);
+          if (matched) {
+            targetProvider = matched.provider || targetProvider;
+            targetModelId = matched.modelId || targetModelId;
+            if (matched.apiKey) apiKey = matched.apiKey;
+            if (matched.baseUrl) baseUrl = matched.baseUrl;
+          }
+        } catch {}
+      }
+
+      const adapter = this.providerRegistry.getAdapter(targetProvider);
+
+      // Fallback API keys & base URLs from Settings DB with process.env fallback if not overridden per model
+      if (!apiKey) {
+        if (targetProvider === 'openai-compatible') {
+          apiKey = this.repo.getSetting('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || '';
+        } else if (targetProvider === 'anthropic') {
+          apiKey = this.repo.getSetting('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || '';
+        } else if (targetProvider === 'gemini') {
+          apiKey = this.repo.getSetting('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
+        }
+      }
+
+      if (!baseUrl && targetProvider === 'openai-compatible') {
         baseUrl = this.repo.getSetting('OPENAI_BASE_URL') || process.env.OPENAI_BASE_URL || '';
-      } else if (session.provider === 'anthropic') {
-        apiKey = this.repo.getSetting('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || '';
-      } else if (session.provider === 'gemini') {
-        apiKey = this.repo.getSetting('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
       }
 
       let maxIterations = 15;
@@ -88,7 +111,7 @@ Rules:
         const response = await adapter.generateResponse(
           llmMessages,
           tools,
-          session.model,
+          targetModelId,
           systemPrompt,
           { apiKey: apiKey || undefined, baseUrl: baseUrl || undefined }
         );

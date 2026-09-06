@@ -110,7 +110,35 @@ app.get('/api/auth/check', (req: Request, res: Response) => {
   return res.json({ authenticated, email });
 });
 
-// Settings API (Manage API keys & LLM endpoints)
+// Models API (Preconfigured list of named models)
+app.get('/api/models', authMiddleware, (req: Request, res: Response) => {
+  const raw = repo.getSetting('configured_models');
+  if (raw) {
+    try {
+      const list = JSON.parse(raw);
+      return res.json(list);
+    } catch {}
+  }
+
+  // Default models
+  const defaultList = [
+    { id: 'gpt-4o', name: 'OpenAI GPT-4o', provider: 'openai-compatible', modelId: 'gpt-4o' },
+    { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic', modelId: 'claude-3-5-sonnet-latest' },
+    { id: 'gemini-2-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', modelId: 'gemini-2.0-flash' },
+    { id: 'deepseek-chat', name: 'DeepSeek Chat (V3)', provider: 'openai-compatible', modelId: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
+    { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'openai-compatible', modelId: 'deepseek-reasoner', baseUrl: 'https://api.deepseek.com' }
+  ];
+  res.json(defaultList);
+});
+
+app.post('/api/models', authMiddleware, (req: Request, res: Response) => {
+  const models = req.body.models;
+  if (!Array.isArray(models)) {
+    return res.status(400).json({ error: 'Expected array of models' });
+  }
+  repo.setSetting('configured_models', JSON.stringify(models));
+  res.json({ success: true, models });
+});
 app.get('/api/settings', authMiddleware, (req: Request, res: Response) => {
   const openaiApiKey = repo.getSetting('OPENAI_API_KEY') || process.env.OPENAI_API_KEY || '';
   const anthropicApiKey = repo.getSetting('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY || '';

@@ -1,5 +1,14 @@
 export type Role = 'user' | 'assistant' | 'system' | 'tool';
 
+export interface ModelConfig {
+  id: string;
+  name: string; // e.g. "DeepSeek V3", "Claude 3.7 Sonnet (Reasoning)", "OpenAI GPT-4o", "Groq Llama 3.3"
+  provider: 'openai-compatible' | 'anthropic' | 'gemini';
+  modelId: string; // e.g. "deepseek-chat", "claude-3-7-sonnet-latest"
+  apiKey?: string;
+  baseUrl?: string;
+}
+
 export interface ProviderConfig {
   id: string;
   name: string;

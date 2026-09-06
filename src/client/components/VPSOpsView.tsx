@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../api';
-import { Session, Message, ConfirmationRequest, ProviderConfig } from '../../shared/types';
+import { Session, Message, ConfirmationRequest, ProviderConfig, ModelConfig } from '../../shared/types';
 import { SettingsModal } from './SettingsModal';
 import {
   ArrowLeft,
@@ -25,9 +25,20 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [prompt, setPrompt] = useState('');
   const [healthData, setHealthData] = useState<any>(null);
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const [modelsList, setModelsList] = useState<ModelConfig[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState('gpt-4o');
   const [selectedProvider, setSelectedProvider] = useState('openai-compatible');
   const [selectedModel, setSelectedModel] = useState('gpt-4o');
   const [showSettings, setShowSettings] = useState(false);
+
+  const loadModels = async () => {
+    try {
+      const list = await apiRequest<ModelConfig[]>('/api/models');
+      setModelsList(list);
+    } catch (e) {
+      console.error('Error loading models list:', e);
+    }
+  };
   const [activeConfirmation, setActiveConfirmation] = useState<ConfirmationRequest | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
@@ -89,6 +100,7 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   useEffect(() => {
     loadProviders();
+    loadModels();
     initVPSSession();
     loadHealth();
   }, []);
@@ -205,32 +217,38 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       {/* Model Selector for VPS Ops */}
-      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center space-x-2 text-[11px] shrink-0">
-        <span className="text-zinc-500">Model:</span>
-        <select
-          value={selectedProvider}
-          onChange={(e) => {
-            const pId = e.target.value;
-            setSelectedProvider(pId);
-            const found = providers.find(p => p.id === pId);
-            if (found) setSelectedModel(found.defaultModel);
-          }}
-          className="bg-surface border border-border rounded px-1.5 py-0.5 text-zinc-300 text-[10px]"
-        >
-          {providers.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+      <div className="px-3 py-1.5 border-b border-border/80 bg-background/50 flex items-center justify-between text-[11px] shrink-0">
+        <div className="flex items-center space-x-1.5">
+          <span className="text-zinc-500">Ops Model:</span>
+          <select
+            value={selectedModelId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedModelId(val);
+              const found = modelsList.find(m => m.id === val || m.modelId === val);
+              if (found) {
+                setSelectedProvider(found.provider);
+                setSelectedModel(found.modelId);
+              } else {
+                setSelectedModel(val);
+              }
+            }}
+            className="bg-surface border border-border rounded px-2 py-0.5 text-accent text-[11px] font-semibold"
+          >
+            {modelsList.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.provider})
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-surface border border-border rounded px-1.5 py-0.5 text-accent text-[10px] truncate max-w-[140px]"
+        <button
+          onClick={() => setShowSettings(true)}
+          className="text-[10px] text-zinc-400 hover:text-accent underline"
         >
-          {(selectedProviderConfig?.availableModels || [selectedModel]).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          + Manage Models
+        </button>
       </div>
 
       {/* Tabs */}
