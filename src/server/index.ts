@@ -429,8 +429,40 @@ app.post('/api/projects/:id/deploy', authMiddleware, async (req: Request, res: R
 
 // Sessions
 app.get('/api/sessions', authMiddleware, (req: Request, res: Response) => {
-  const projectId = req.query.projectId ? String(req.query.projectId) : undefined;
-  res.json(repo.getSessions(projectId));
+  const rawProjectId = req.query.projectId;
+  const projectId = (rawProjectId === 'null' || rawProjectId === null) 
+    ? null 
+    : (rawProjectId !== undefined ? String(rawProjectId) : undefined);
+    
+  let sessions = repo.getSessions(projectId);
+
+  // If querying VPS Ops sessions (projectId === null), ensure the session matches default_vps_model if set
+  if (projectId === null) {
+    const defaultVpsModel = repo.getSetting('default_vps_model');
+    if (defaultVpsModel && sessions.length > 0) {
+      const latestSes = sessions[0];
+      if (latestSes.model !== defaultVpsModel) {
+        let targetProvider = latestSes.provider;
+        const rawModels = repo.getSetting('configured_models');
+        if (rawModels) {
+          try {
+            const modelsList: any[] = JSON.parse(rawModels);
+            const matched = modelsList.find(m => m.id === defaultVpsModel || m.modelId === defaultVpsModel);
+            if (matched) {
+              targetProvider = matched.provider || targetProvider;
+            }
+          } catch {}
+        }
+        repo.updateSession(latestSes.id, {
+          model: defaultVpsModel,
+          provider: targetProvider
+        });
+        sessions = repo.getSessions(null);
+      }
+    }
+  }
+
+  res.json(sessions);
 });
 
 app.post('/api/sessions', authMiddleware, (req: Request, res: Response) => {

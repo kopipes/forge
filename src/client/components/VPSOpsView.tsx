@@ -36,8 +36,10 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     try {
       const list = await apiRequest<ModelConfig[]>('/api/models');
       setModelsList(list);
+      return list;
     } catch (e) {
       console.error('Error loading models list:', e);
+      return [];
     }
   };
   const [activeConfirmation, setActiveConfirmation] = useState<ConfirmationRequest | null>(null);
@@ -55,14 +57,15 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   };
 
-  const initVPSSession = async () => {
+  const initVPSSession = async (currentModels?: ModelConfig[]) => {
     try {
+      const activeList = currentModels || modelsList;
       const sessions = await apiRequest<Session[]>('/api/sessions?projectId=null');
       if (sessions.length > 0) {
         const ses = sessions[0];
         setSession(ses);
         setSelectedModelId(ses.model);
-        const found = modelsList.find(m => m.id === ses.model || m.modelId === ses.model);
+        const found = activeList.find(m => m.id === ses.model || m.modelId === ses.model);
         setSelectedProvider(found ? found.provider : ses.provider);
         setSelectedModel(found ? found.modelId : ses.model);
       } else {
@@ -70,14 +73,12 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           method: 'POST',
           body: JSON.stringify({
             projectId: null,
-            title: 'VPS Ops Session',
-            provider: 'openai-compatible',
-            model: 'gpt-4o'
+            title: 'VPS Ops Session'
           })
         });
         setSession(newSes);
         setSelectedModelId(newSes.model);
-        const found = modelsList.find(m => m.id === newSes.model || m.modelId === newSes.model);
+        const found = activeList.find(m => m.id === newSes.model || m.modelId === newSes.model);
         setSelectedProvider(found ? found.provider : newSes.provider);
         setSelectedModel(found ? found.modelId : newSes.model);
       }
@@ -132,8 +133,8 @@ export const VPSOpsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   useEffect(() => {
     const init = async () => {
       await loadProviders();
-      await loadModels();
-      await initVPSSession();
+      const models = await loadModels();
+      await initVPSSession(models);
       await loadHealth();
     };
     init();
