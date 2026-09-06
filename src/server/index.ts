@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import si from 'systeminformation';
@@ -11,6 +12,7 @@ import { Repository } from './repo.js';
 import { ProviderRegistry } from './providers/registry.js';
 import { ToolRegistry } from './tools/registry.js';
 import { AgentEngine } from './agent.js';
+import { sendPingOTP, verifyPingOTP } from './auth/otp.js';
 
 const execAsync = promisify(exec);
 
@@ -27,37 +29,85 @@ const providerRegistry = new ProviderRegistry();
 const toolRegistry = new ToolRegistry();
 const agentEngine = new AgentEngine(repo, providerRegistry, toolRegistry);
 
-// Simple password auth
-const FORGE_PASSWORD = process.env.FORGE_PASSWORD || 'forge123';
+// Session Cookie name & secret token validation
 const AUTH_COOKIE_NAME = 'forge_session';
+
+// Helper to validate session
+function validateSessionToken(token?: string): boolean {
+  if (!token) return false;
+  const savedToken = repo.getSetting('active_session_token');
+  return !!savedToken && savedToken === token;
+}
 
 function authMiddleware(req: Request, res: Response, next: express.NextFunction) {
   const token = req.cookies[AUTH_COOKIE_NAME] || req.headers['x-forge-auth'];
-  if (token === FORGE_PASSWORD || process.env.NODE_ENV === 'development') {
+  if (validateSessionToken(token as string)) {
     return next();
   }
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
-// Auth routes
-app.post('/api/auth/login', (req: Request, res: Response) => {
-  const { password } = req.body;
-  if (password === FORGE_PASSWORD) {
-    res.cookie(AUTH_COOKIE_NAME, password, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000 });
-    return res.json({ success: true });
+// 1. Request OTP code by email
+app.post('/api/auth/send-code', async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email is required' });
   }
-  return res.status(401).json({ error: 'Invalid password' });
+
+  const challengeId = `chal_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const result = await sendPingOTP(challengeId, email);
+
+  if (!result.success) {
+    return res.status(400).json({ error: result.error || 'Failed to send login code' });
+  }
+
+  return res.json({
+    success: true,
+    challengeId,
+    email: email.toLowerCase().trim()
+  });
 });
 
+// 2. Verify OTP code and establish login session
+app.post('/api/auth/verify-code', (req: Request, res: Response) => {
+  const { challengeId, code } = req.body;
+
+  if (!challengeId || !code) {
+    return res.status(400).json({ error: 'Challenge ID and Code are required' });
+  }
+
+  const result = verifyPingOTP(challengeId, code);
+  if (!result.valid) {
+    return res.status(400).json({ error: result.reason || 'Invalid verification code' });
+  }
+
+  // Generate secure session token & store in settings DB
+  const sessionToken = crypto.randomBytes(32).toString('hex');
+  repo.setSetting('active_session_token', sessionToken);
+  repo.setSetting('logged_in_email', result.email || '');
+
+  res.cookie(AUTH_COOKIE_NAME, sessionToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 3600 * 1000 // 30 days
+  });
+
+  return res.json({ success: true, email: result.email });
+});
+
+// Logout
 app.post('/api/auth/logout', (req: Request, res: Response) => {
+  repo.setSetting('active_session_token', '');
   res.clearCookie(AUTH_COOKIE_NAME);
   return res.json({ success: true });
 });
 
+// Check auth status
 app.get('/api/auth/check', (req: Request, res: Response) => {
   const token = req.cookies[AUTH_COOKIE_NAME] || req.headers['x-forge-auth'];
-  const authenticated = token === FORGE_PASSWORD || process.env.NODE_ENV === 'development';
-  return res.json({ authenticated });
+  const authenticated = validateSessionToken(token as string);
+  const email = authenticated ? repo.getSetting('logged_in_email') : null;
+  return res.json({ authenticated, email });
 });
 
 // Providers & Models
