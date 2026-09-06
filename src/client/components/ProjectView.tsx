@@ -11,6 +11,7 @@ import {
   Play,
   RotateCcw,
   UploadCloud,
+  DownloadCloud,
   Terminal,
   StopCircle
 } from 'lucide-react';
@@ -181,6 +182,18 @@ export const ProjectView: React.FC<{
     }
   };
 
+  const handlePull = async () => {
+    try {
+      const res = await apiRequest<{ success: boolean; output: string }>(`/api/projects/${project.id}/git-pull`, {
+        method: 'POST'
+      });
+      alert(`Git Pull Result:\n${res.output}`);
+      loadGitInfo();
+    } catch (err: any) {
+      alert(`Git Pull Error: ${err.message}`);
+    }
+  };
+
   const handleDeploy = async () => {
     if (!confirm(`Run deployment for ${project.name}?`)) return;
     try {
@@ -233,6 +246,15 @@ export const ProjectView: React.FC<{
 
         {/* Action Toolbar */}
         <div className="flex items-center space-x-1.5">
+          <button
+            onClick={handlePull}
+            title="Git Pull"
+            className="flex items-center space-x-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-200"
+          >
+            <DownloadCloud className="w-3 h-3 text-sky-400" />
+            <span>Pull</span>
+          </button>
+
           <button
             onClick={handleShowDiff}
             className="flex items-center space-x-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-zinc-200"

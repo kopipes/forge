@@ -9,6 +9,7 @@ import {
   GitDiffTool,
   GitCommitTool,
   GitPushTool,
+  GitPullTool,
   GitSyncCheckTool
 } from './project.js';
 import {
@@ -37,6 +38,7 @@ export class ToolRegistry {
     this.registerProject(new GitDiffTool());
     this.registerProject(new GitCommitTool());
     this.registerProject(new GitPushTool());
+    this.registerProject(new GitPullTool());
     this.registerProject(new GitSyncCheckTool());
 
     // VPS Tools

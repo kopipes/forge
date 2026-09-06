@@ -71,15 +71,32 @@ app.get('/api/projects', authMiddleware, (req: Request, res: Response) => {
 });
 
 app.post('/api/projects', authMiddleware, async (req: Request, res: Response) => {
-  const { name, projectPath, gitRemote, defaultProvider, defaultModel, deployCmd } = req.body;
+  const { name, projectPath, gitRemote, defaultProvider, defaultModel, deployCmd, cloneFromRemote } = req.body;
 
   if (!name || !projectPath) {
     return res.status(400).json({ error: 'Name and projectPath are required' });
   }
 
   const resolvedPath = path.resolve(projectPath);
-  if (!fs.existsSync(resolvedPath)) {
-    fs.mkdirSync(resolvedPath, { recursive: true });
+
+  // If user requested to clone from remote repository
+  if (cloneFromRemote && gitRemote) {
+    if (fs.existsSync(resolvedPath) && fs.readdirSync(resolvedPath).length > 0) {
+      return res.status(400).json({ error: `Directory ${resolvedPath} already exists and is not empty.` });
+    }
+    try {
+      const parentDir = path.dirname(resolvedPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      await execAsync(`git clone "${gitRemote}" "${resolvedPath}"`);
+    } catch (err: any) {
+      return res.status(500).json({ error: `Git clone failed: ${err.message}` });
+    }
+  } else {
+    if (!fs.existsSync(resolvedPath)) {
+      fs.mkdirSync(resolvedPath, { recursive: true });
+    }
   }
 
   const now = new Date().toISOString();
@@ -134,6 +151,19 @@ app.get('/api/projects/:id/git-diff', authMiddleware, async (req: Request, res: 
     res.json({ diff });
   } catch (e: any) {
     res.json({ diff: '' });
+  }
+});
+
+// Git Pull for project
+app.post('/api/projects/:id/git-pull', authMiddleware, async (req: Request, res: Response) => {
+  const project = repo.getProject(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Project not found' });
+
+  try {
+    const { stdout, stderr } = await execAsync('git pull', { cwd: project.path });
+    res.json({ success: true, output: stdout || stderr || 'Already up to date.' });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message, output: e.stdout || e.stderr });
   }
 });
 

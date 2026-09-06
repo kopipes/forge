@@ -11,6 +11,7 @@ export const DashboardView: React.FC<{
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [cloneFromRemote, setCloneFromRemote] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
     projectPath: '',
@@ -46,9 +47,13 @@ export const DashboardView: React.FC<{
     try {
       await apiRequest('/api/projects', {
         method: 'POST',
-        body: JSON.stringify(newProject)
+        body: JSON.stringify({
+          ...newProject,
+          cloneFromRemote
+        })
       });
       setShowAddProject(false);
+      setCloneFromRemote(false);
       setNewProject({
         name: '',
         projectPath: '',
@@ -151,7 +156,18 @@ export const DashboardView: React.FC<{
           </div>
 
           <div>
-            <label className="block text-[10px] text-zinc-400 mb-1">PROJECT DIRECTORY PATH</label>
+            <label className="block text-[10px] text-zinc-400 mb-1">GITHUB / GIT REMOTE URL</label>
+            <input
+              type="text"
+              placeholder="e.g. https://github.com/user/my-repo.git"
+              value={newProject.gitRemote}
+              onChange={e => setNewProject({ ...newProject, gitRemote: e.target.value })}
+              className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-zinc-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-zinc-400 mb-1">PROJECT DIRECTORY PATH ON VPS</label>
             <input
               type="text"
               placeholder="e.g. /srv/apps/my-app or ./my-app"
@@ -161,6 +177,21 @@ export const DashboardView: React.FC<{
               required
             />
           </div>
+
+          {newProject.gitRemote && (
+            <div className="flex items-center space-x-2 bg-background p-2 rounded border border-border">
+              <input
+                type="checkbox"
+                id="cloneFromRemote"
+                checked={cloneFromRemote}
+                onChange={e => setCloneFromRemote(e.target.checked)}
+                className="rounded text-accent focus:ring-0"
+              />
+              <label htmlFor="cloneFromRemote" className="text-xs text-zinc-300 cursor-pointer">
+                Clone app from GitHub repository onto VPS
+              </label>
+            </div>
+          )}
 
           <div>
             <label className="block text-[10px] text-zinc-400 mb-1">DEPLOY COMMAND (OPTIONAL)</label>
@@ -178,7 +209,7 @@ export const DashboardView: React.FC<{
               type="submit"
               className="flex-1 bg-accent hover:bg-emerald-600 text-zinc-950 font-bold py-1.5 rounded text-xs"
             >
-              Save Project
+              {cloneFromRemote ? 'Clone & Create Project' : 'Save Project'}
             </button>
             <button
               type="button"

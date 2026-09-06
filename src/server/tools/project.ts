@@ -280,6 +280,28 @@ export class GitPushTool implements Tool {
   }
 }
 
+export class GitPullTool implements Tool {
+  definition: ToolDefinition = {
+    name: 'git_pull',
+    description: 'Pulls latest changes from remote repository (e.g. origin main/master).',
+    parameters: {
+      type: 'object',
+      properties: {
+        remote: { type: 'string', description: 'Remote name (defaults to origin)' },
+        branch: { type: 'string', description: 'Branch name (defaults to current branch)' }
+      }
+    }
+  };
+
+  async execute(args: Record<string, any>, context: ToolExecutionContext): Promise<string> {
+    if (!context.projectPath) throw new Error('Project context required');
+    const remote = args.remote || 'origin';
+    const branch = args.branch || '';
+    const { stdout, stderr } = await execAsync(`git pull ${remote} ${branch}`.trim(), { cwd: context.projectPath });
+    return stdout || stderr || 'Pull completed successfully.';
+  }
+}
+
 export class GitSyncCheckTool implements Tool {
   definition: ToolDefinition = {
     name: 'git_sync_check',
