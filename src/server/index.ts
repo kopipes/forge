@@ -120,15 +120,88 @@ app.get('/api/models', authMiddleware, (req: Request, res: Response) => {
     } catch {}
   }
 
-  // Default models
+  // Default models with Provider - Model format
   const defaultList = [
-    { id: 'gpt-4o', name: 'OpenAI GPT-4o', provider: 'openai-compatible', modelId: 'gpt-4o' },
-    { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic', modelId: 'claude-3-5-sonnet-latest' },
-    { id: 'gemini-2-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', modelId: 'gemini-2.0-flash' },
-    { id: 'deepseek-chat', name: 'DeepSeek Chat (V3)', provider: 'openai-compatible', modelId: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
-    { id: 'deepseek-reasoner', name: 'DeepSeek R1', provider: 'openai-compatible', modelId: 'deepseek-reasoner', baseUrl: 'https://api.deepseek.com' }
+    { id: 'gpt-4o', name: 'OpenAI - gpt-4o', provider: 'openai-compatible', modelId: 'gpt-4o' },
+    { id: 'claude-3-5-sonnet', name: 'Anthropic - claude-3-5-sonnet-latest', provider: 'anthropic', modelId: 'claude-3-5-sonnet-latest' },
+    { id: 'gemini-2-flash', name: 'Gemini - gemini-2.0-flash', provider: 'gemini', modelId: 'gemini-2.0-flash' },
+    { id: 'deepseek-chat', name: 'DeepSeek - deepseek-chat', provider: 'openai-compatible', modelId: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
+    { id: 'deepseek-reasoner', name: 'DeepSeek - deepseek-reasoner', provider: 'openai-compatible', modelId: 'deepseek-reasoner', baseUrl: 'https://api.deepseek.com' }
   ];
   res.json(defaultList);
+});
+
+// Auto-discover / Fetch available models from provider API
+app.post('/api/models/fetch-from-provider', authMiddleware, async (req: Request, res: Response) => {
+  const { provider, apiKey, baseUrl } = req.body;
+
+  if (!provider) {
+    return res.status(400).json({ error: 'Provider is required' });
+  }
+
+  try {
+    let modelIds: string[] = [];
+
+    if (provider === 'openai-compatible') {
+      const url = (baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const response = await fetch(`${url}/models`, { method: 'GET', headers });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Failed to fetch models (${response.status}): ${errText}`);
+      }
+      const data: any = await response.json();
+      const list = Array.isArray(data.data) ? data.data : (Array.isArray(data.models) ? data.models : []);
+      modelIds = list.map((m: any) => typeof m === 'string' ? m : (m.id || m.name)).filter(Boolean);
+    } else if (provider === 'anthropic') {
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/models', {
+          method: 'GET',
+          headers: {
+            'x-api-key': apiKey || '',
+            'anthropic-version': '2023-06-01'
+          }
+        });
+        if (response.ok) {
+          const data: any = await response.json();
+          if (Array.isArray(data.data)) {
+            modelIds = data.data.map((m: any) => m.id);
+          }
+        }
+      } catch {}
+
+      if (modelIds.length === 0) {
+        // Fallback standard Anthropic models
+        modelIds = [
+          'claude-3-7-sonnet-latest',
+          'claude-3-5-sonnet-latest',
+          'claude-3-5-haiku-latest',
+          'claude-3-opus-latest'
+        ];
+      }
+    } else if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey || ''}`;
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Failed to fetch Gemini models (${response.status}): ${errText}`);
+      }
+      const data: any = await response.json();
+      if (Array.isArray(data.models)) {
+        modelIds = data.models
+          .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m: any) => m.name.replace(/^models\//, ''));
+      }
+    }
+
+    // Sort models
+    modelIds.sort((a, b) => a.localeCompare(b));
+    return res.json({ models: modelIds });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'Failed to fetch models from provider' });
+  }
 });
 
 app.post('/api/models', authMiddleware, (req: Request, res: Response) => {
